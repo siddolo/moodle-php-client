@@ -50,13 +50,12 @@ class Moodle {
 
         $opts = [
             'ssl'=> [
-                'verify_peer' => false,
-                'verify_peer_name' => false,
+                // 'verify_peer' => false,
+                // 'verify_peer_name' => false,
             ],
             'http' => [
-                'proxy' => 'tcp://127.0.0.1:8080',
-                'request_fulluri' => true,
-
+                // 'proxy' => 'tcp://127.0.0.1:8080',
+                // 'request_fulluri' => true,
                 'method' => 'GET',
                 'follow_location' => false,
                 'header' => $headerBuffer
@@ -83,13 +82,12 @@ class Moodle {
 
         $opts = [
             'ssl'=> [
-                'verify_peer' => false,
-                'verify_peer_name' => false,
+                // 'verify_peer' => false,
+                // 'verify_peer_name' => false,
             ],
             'http' => [
-                'proxy' => 'tcp://127.0.0.1:8080',
-                'request_fulluri' => true,
-            
+                // 'proxy' => 'tcp://127.0.0.1:8080',
+                // 'request_fulluri' => true,
                 'method' => 'POST',
                 'follow_location' => false,
                 'header' => $headerBuffer,
