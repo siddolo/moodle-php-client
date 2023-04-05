@@ -45,7 +45,8 @@ Array
 
 ```
 // Partecipanti
-$attendees = $moodle->getAttendees(4);
+$courseId = 4;
+$attendees = $moodle->getAttendees($courseId);
 print_r($attendees);
 ```
 
