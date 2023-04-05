@@ -62,3 +62,24 @@ Array
         )
 ...
 ```
+
+### Get Attendee Details
+
+```
+// Dettagli Partecipante
+$attendeeId = 8;
+$courseId = 4;
+$attendee = $moodle->getAttendee($attendeeId, $courseId);
+print_r($attendee);
+```
+
+```
+Array
+(
+    [attendeeName] => Mario Rossi
+    [indirizzo email] => foo@bar.it
+    [nazione] => Italia
+    [profili corso] => Webinar
+    [ruoli] => Manager
+...
+```

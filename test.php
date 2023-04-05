@@ -6,7 +6,7 @@ require_once('moodle.php');
 $moodle = new Moodle(
     $config['moodle']['url'],
     $config['moodle']['username'],
-    $config['moodle']['password'],
+    $config['moodle']['password']
 );
 
 // Login
@@ -17,5 +17,12 @@ $courses = $moodle->getCourses();
 print_r($courses);
 
 // Partecipanti
-$attendees = $moodle->getAttendees(4);
+$courseId = 4;
+$attendees = $moodle->getAttendees($courseId);
 print_r($attendees);
+
+// Dettagli Partecipante
+$attendeeId = 8;
+$courseId = 4;
+$attendee = $moodle->getAttendee($attendeeId, $courseId);
+print_r($attendee);

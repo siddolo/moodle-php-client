@@ -5,6 +5,7 @@ class Moodle {
     const URL_HOME = '/';
     const URL_LOGIN = '/login/index.php';
     const URL_ATTENDEES = '/user/index.php?id={courseId}';
+    const URL_ATTENDEE_DETAIL = '/user/view.php?id={attendeeId}&course={courseId}';
 
     private $baseUrl = '';
     private $username = '';
@@ -129,6 +130,7 @@ class Moodle {
         $http = $this->getUrl($this->baseUrl . self::URL_LOGIN);
         $dom = new simple_html_dom();
         $dom->load($http['content']);
+        // cerca il primo <input name="logintoken" value="xxx"> e prende xxx
         $loginToken = $dom->find('input[name=logintoken]', 0)->value;
 
         // Login
@@ -143,12 +145,15 @@ class Moodle {
         $http = $this->getUrl($this->baseUrl . self::URL_LOGIN);
         $dom = new simple_html_dom();
         $dom->load($http['content']);
+        // cerca <a> dentro il <div class="logininfo">
         $loginInfo = $dom->find('div.logininfo a', 0);
+        // se lo trova recupera il contenuto di <a> e ritorna true
         if ($loginInfo) {
             print('Logged in as: ' . $loginInfo->innertext . PHP_EOL);
             return true;
         }
 
+        // se non trova il div ritorna false
         print('Unable to login' . PHP_EOL);
         return false;
     }
@@ -199,5 +204,33 @@ class Moodle {
         }
 
         return $courseAttendees;
+    }
+
+
+    public function getAttendee($attendeeId, $courseId) {
+        $http = $this->getUrl($this->baseUrl . 
+            str_replace(
+                '{attendeeId}',
+                $attendeeId,
+                str_replace('{courseId}', $courseId, self::URL_ATTENDEE_DETAIL)
+            )
+        );
+
+        $dom = new simple_html_dom();
+        $dom->load($http['content']);
+
+        $attendeeDetails = [
+            'attendeeName' => $dom->find('div.page-header-headings h2', 0)->plaintext
+        ];
+        $attendeeNodes = $dom->find('div.card-body li.contentnode');
+        if ($attendeeNodes) {
+            foreach ($attendeeNodes as $attendeeNode) {
+                $key = strtolower($attendeeNode->find('dt', 0)->plaintext);
+                $value = html_entity_decode($attendeeNode->find('dd', 0)->plaintext);
+                $attendeeDetails[$key] = $value;
+            }
+        }
+
+        return $attendeeDetails;
     }
 }
