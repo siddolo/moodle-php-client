@@ -18,3 +18,4 @@ print_r($courses);
 
 // Partecipanti
 $attendees = $moodle->getAttendees(4);
+print_r($attendees);

@@ -4,7 +4,7 @@ require_once('lib/simple_html_dom.php');
 class Moodle {
     const URL_HOME = '/';
     const URL_LOGIN = '/login/index.php';
-    const URL_ATTENDEES = '/user/index.php';
+    const URL_ATTENDEES = '/user/index.php?id={courseId}';
 
     private $baseUrl = '';
     private $username = '';
@@ -162,14 +162,10 @@ class Moodle {
         $courses = $dom->find('div.coursebox');
         if ($courses) {
             foreach ($courses as $course) {
-                $courseId = $course->{'data-courseid'};
-                $courseName = $course->find('a', 0)->innertext;
-                $courseLink = $course->find('a', 0)->href;
-
                 array_push($myCourses, [
-                    'courseId' => $courseId,
-                    'courseName' => $courseName,
-                    'courseLink' => $courseLink,
+                    'courseId' => $course->{'data-courseid'},
+                    'courseName' => $course->find('a', 0)->innertext,
+                    'courseLink' => $course->find('a', 0)->href,
                 ]);
             }
         }
@@ -179,6 +175,29 @@ class Moodle {
 
 
     public function getAttendees($courseId) {
+        $courseAttendees = [];
 
+        $http = $this->getUrl($this->baseUrl . str_replace('{courseId}', $courseId, self::URL_ATTENDEES));
+        $dom = new simple_html_dom();
+        $dom->load($http['content']);
+        $table = $dom->find('table#participants tbody', 0);
+        if ($table) {
+            $rows = $table->find('tr');
+            if ($rows) {
+                foreach ($rows as $row) {
+                    $attendee = $row->find('th a', 0);
+                    if ($attendee) {
+                        array_push($courseAttendees, [
+                            'attendeeName' => $row->find('th a', 0)->plaintext,
+                            'attendeeEmail' => $row->find('td', 1)->plaintext,
+                            'attendeeUrl' => html_entity_decode($row->find('th a', 0)->href),
+                            'attendeeImage' => $row->find('th a img', 0)->src,
+                        ]);
+                    }
+                }
+            }
+        }
+
+        return $courseAttendees;
     }
 }

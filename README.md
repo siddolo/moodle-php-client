@@ -7,6 +7,7 @@ Moodle HTTP Client Interface
 ### Login
 
 ```
+// Login
 $moodle->login();
 ```
 
@@ -15,7 +16,9 @@ Logged in as: Mario Rossi
 ```
 
 ### Get Courses
+
 ```
+// Corsi disponibili
 $courses = $moodle->getCourses();
 print_r($courses);
 ```
@@ -34,6 +37,27 @@ Array
             [courseId] => 5
             [courseName] => Bar
             [courseLink] => https://elearning.foo.it/course/view.php?id=5
+        )
+...
+```
+
+### Get Attendees
+
+```
+// Partecipanti
+$attendees = $moodle->getAttendees(4);
+print_r($attendees);
+```
+
+```
+Array
+(
+    [0] => Array
+        (
+            [attendeeName] => Utente Demo
+            [attendeeEmail] => utente@demo.cor
+            [attendeeUrl] => https://elearning.foo.it/user/view.php?id=3&course=4
+            [attendeeImage] => https://elearning.foo.it/theme/image.php/boost/core/1675336758/u/f2
         )
 ...
 ```
