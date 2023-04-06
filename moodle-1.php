@@ -2,16 +2,18 @@
 require_once('lib/simple_html_dom.php');
 
 class Moodle {
-    const URL_HOME = '/';
+    const URL_HOME = '/my/';
     const URL_LOGIN = '/login/index.php';
+    const URL_COURSES = '/lib/ajax/service.php?sesskey={sessKey}&info=local_subcourses_get_enrolled_courses_without_subcourses';
     const URL_ATTENDEES = '/user/index.php?id={courseId}';
-    const URL_ATTENDEE_DETAIL = '/user/view.php?id={attendeeId}&course={courseId}';
+    const URL_ATTENDEE_DETAIL = '/user/view.php?id={attendeeId}&course={courseId}&showallcourses=1';
 
     private $baseUrl = '';
     private $username = '';
     private $password = '';
     private $csrfToken = '';
     private $cookie = 'fake=cookie';
+    private $sesskey = '';
 
     // Default headers
     private $headers = [
@@ -51,12 +53,12 @@ class Moodle {
 
         $opts = [
             'ssl'=> [
-                // 'verify_peer' => false,
-                // 'verify_peer_name' => false,
+                'verify_peer' => false,
+                'verify_peer_name' => false,
             ],
             'http' => [
-                // 'proxy' => 'tcp://127.0.0.1:8080',
-                // 'request_fulluri' => true,
+                'proxy' => 'tcp://127.0.0.1:8080',
+                'request_fulluri' => true,
                 'method' => 'GET',
                 'follow_location' => false,
                 'header' => $headerBuffer
@@ -83,16 +85,48 @@ class Moodle {
 
         $opts = [
             'ssl'=> [
-                // 'verify_peer' => false,
-                // 'verify_peer_name' => false,
+                'verify_peer' => false,
+                'verify_peer_name' => false,
             ],
             'http' => [
-                // 'proxy' => 'tcp://127.0.0.1:8080',
-                // 'request_fulluri' => true,
+                'proxy' => 'tcp://127.0.0.1:8080',
+                'request_fulluri' => true,
                 'method' => 'POST',
                 'follow_location' => false,
                 'header' => $headerBuffer,
                 'content' => $query
+            ]
+        ];
+
+        return $this->makeHttpRequest($opts, $url);
+    }
+
+
+    // Json POST
+    private function jpostUrl($url, $json) {
+
+        $postHeaders = array_merge(
+            $this->headers, [
+                'cookie: ' . $this->cookie,
+                'content-type: application/json',
+                'content-length: '. strlen($json)
+            ]
+        );
+
+        $headerBuffer = implode("\r\n", $postHeaders);
+
+        $opts = [
+            'ssl'=> [
+                'verify_peer' => false,
+                'verify_peer_name' => false,
+            ],
+            'http' => [
+                'proxy' => 'tcp://127.0.0.1:8080',
+                'request_fulluri' => true,
+                'method' => 'POST',
+                'follow_location' => false,
+                'header' => $headerBuffer,
+                'content' => $json
             ]
         ];
 
@@ -114,6 +148,7 @@ class Moodle {
         ]);
     }
 
+
     private function getCookie($headers) {
         foreach ($headers as $header) {
             if (preg_match('|^Set-Cookie: (MoodleSession=.*);|iU', $header, $matches)) {
@@ -124,8 +159,24 @@ class Moodle {
     }
 
 
-    public function login() {
+    private function getSesskey($buffer) {
+        if (preg_match('/"sesskey":"(.*)"/mU', $buffer, $matches)) {
+            $this->sesskey = $matches[1];
+            return $matches[1];
+        }
+    }
 
+
+    private function cloudFlareDecodeEmail($encodedString){
+        $k = hexdec(substr($encodedString,0,2));
+        for($i=2,$email='';$i<strlen($encodedString)-1;$i+=2){
+          $email.=chr(hexdec(substr($encodedString,$i,2))^$k);
+        }
+        return $email;
+      }
+
+
+    public function login() {
         // Get Anti-Cross-Site-Request-Forgery TOKEN
         $http = $this->getUrl($this->baseUrl . self::URL_LOGIN);
         $dom = new simple_html_dom();
@@ -142,14 +193,15 @@ class Moodle {
         ]);
 
         // Test LogIn
-        $http = $this->getUrl($this->baseUrl . self::URL_LOGIN);
+        $http = $this->getUrl($this->baseUrl . self::URL_HOME);
         $dom = new simple_html_dom();
         $dom->load($http['content']);
-        // cerca <a> dentro il <div class="logininfo">
-        $loginInfo = $dom->find('div.logininfo a', 0);
-        // se lo trova recupera il contenuto di <a> e ritorna true
+        // cerca <a> dentro il <div class="user_set_header">
+        $loginInfo = $dom->find('div.user_set_header img', 0);
+        // se lo trova recupera l'atributo "alt" di <img> e ritorna true
         if ($loginInfo) {
-            print('Logged in as: ' . $loginInfo->innertext . PHP_EOL);
+            print('Logged in as: ' . $loginInfo->alt . PHP_EOL);
+            $this->getSesskey($http['content']);
             return true;
         }
 
@@ -158,24 +210,18 @@ class Moodle {
         return false;
     }
 
+
     public function getCourses() {
         $myCourses = [];
 
-        $http = $this->getUrl($this->baseUrl . self::URL_HOME);
-        $dom = new simple_html_dom();
-        $dom->load($http['content']);
-        $courses = $dom->find('div.coursebox');
-        if ($courses) {
-            foreach ($courses as $course) {
-                array_push($myCourses, [
-                    'courseId' => $course->{'data-courseid'},
-                    'courseName' => $course->find('a', 0)->innertext,
-                    'courseLink' => $course->find('a', 0)->href,
-                ]);
-            }
-        }
+        $json = '[{"index":0,"methodname":"local_subcourses_get_enrolled_courses_without_subcourses","args":{"offset":0,"limit":0,"classification":"all","sort":"fullname"}}]';
 
-        return $myCourses;
+        $http = $this->jpostUrl(
+            $this->baseUrl . str_replace('{sessKey}', $this->sesskey, self::URL_COURSES),
+            $json
+        );
+
+        return json_decode($http['content']);
     }
 
 
@@ -192,11 +238,18 @@ class Moodle {
                 foreach ($rows as $row) {
                     $attendee = $row->find('th a', 0);
                     if ($attendee) {
+                        $scrabledEmail = $row->find('td a', 0)->{'data-cfemail'};
+                        $plaintextEmail = $this->cloudFlareDecodeEmail($scrabledEmail);
+
                         array_push($courseAttendees, [
                             'attendeeName' => $row->find('th a', 0)->plaintext,
-                            'attendeeEmail' => $row->find('td', 1)->plaintext,
+                            'attendeeEmail' => $plaintextEmail,
                             'attendeeUrl' => html_entity_decode($row->find('th a', 0)->href),
                             'attendeeImage' => $row->find('th a img', 0)->src,
+                            'attendeeDepartment' => trim($row->find('td', 2)->plaintext),
+                            'attendeeRole' => trim($row->find('td', 3)->plaintext),
+                            'attendeeGroups' => trim($row->find('td', 4)->plaintext),
+                            'attendeeLastAccess' => trim($row->find('td', 5)->plaintext),
                         ]);
                     }
                 }
@@ -219,16 +272,33 @@ class Moodle {
         $dom = new simple_html_dom();
         $dom->load($http['content']);
 
-        $attendeeDetails = [
-            'attendeeName' => $dom->find('div.page-header-headings h2', 0)->plaintext
-        ];
-        $attendeeNodes = $dom->find('div.card-body li.contentnode');
+        $attendeeDetails = [];
+
+        $attendeeNodes = $dom->find('div.siderbar_contact_widget', 0)->find('p');
         if ($attendeeNodes) {
-            foreach ($attendeeNodes as $attendeeNode) {
-                $key = strtolower($attendeeNode->find('dt', 0)->plaintext);
-                $value = html_entity_decode($attendeeNode->find('dd', 0)->plaintext);
+            for ($i=0; $i<=count($attendeeNodes); $i++) {
+                $key = strtolower($dom->find('div.siderbar_contact_widget p', $i)->plaintext);
+                $value = $dom->find('div.siderbar_contact_widget i', $i)->plaintext;
+                if (preg_match('/\[email&/', $value)) {
+                    $scrabledEmail = $dom->find('div.siderbar_contact_widget i', $i)->find('a', 0)->{'data-cfemail'};
+                    $value = $this->cloudFlareDecodeEmail($scrabledEmail);
+                }
                 $attendeeDetails[$key] = $value;
             }
+
+            $courses = [];
+            $domCourses = $dom->find('div#panel-coursedetails ul li');
+            foreach ($domCourses as $domCourse) {
+                array_push(
+                    $courses, 
+                    [
+                        'courseUrl' => $domCourse->find('a', 0)->plaintext,
+                        'courseName' => $domCourse->find('a', 0)->href,
+                    ]
+                );
+            }
+
+            $attendeeDetails['courses'] = $courses;
         }
 
         return $attendeeDetails;

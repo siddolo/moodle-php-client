@@ -3,7 +3,7 @@
 require_once('config.php');
 
 // Moodle template parser
-require_once('moodle.php');
+require_once('moodle-1.php');
 
 $moodle = new Moodle(
     $config['moodle']['url'],
@@ -19,12 +19,12 @@ $courses = $moodle->getCourses();
 print_r($courses);
 
 // Partecipanti
-$courseId = 4;
+$courseId = 969;
 $attendees = $moodle->getAttendees($courseId);
 print_r($attendees);
 
 // Dettagli Partecipante
-$attendeeId = 8;
-$courseId = 4;
-$attendee = $moodle->getAttendee($attendeeId, $courseId);
+$attendeeId = 40802;
+$courseId = 969;
+$attendee = $moodle->getAttendeeDetail($attendeeId, $courseId);
 print_r($attendee);

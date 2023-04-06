@@ -69,7 +69,7 @@ Array
 // Dettagli Partecipante
 $attendeeId = 8;
 $courseId = 4;
-$attendee = $moodle->getAttendee($attendeeId, $courseId);
+$attendee = $moodle->getAttendeeDetail($attendeeId, $courseId);
 print_r($attendee);
 ```
 
